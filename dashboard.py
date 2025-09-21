@@ -296,21 +296,43 @@ def show_placement_upload_jd():
                 if "parsed_data" in result:
                     parsed = result["parsed_data"]
                     
+                    # Create a more professional display
+                    st.subheader("📋 Job Description Summary")
+                    
                     col1, col2 = st.columns(2)
                     with col1:
-                        st.metric("Job Title", parsed.get("job_title", "Not detected"))
-                        st.metric("Company", parsed.get("company_info", {}).get("name", "Not detected"))
+                        st.info(f"**Job Title:** {parsed.get('job_title', 'Not specified')}")
+                        st.info(f"**Company:** {parsed.get('company_info', {}).get('name', 'Not specified')}")
                     with col2:
-                        st.metric("Location", parsed.get("company_info", {}).get("location", "Not detected"))
-                        st.metric("Required Skills", len(parsed.get("required_skills", [])))
+                        st.info(f"**Location:** {parsed.get('company_info', {}).get('location', 'Not specified')}")
+                        st.info(f"**Skills Found:** {len(parsed.get('required_skills', []))} skills identified")
                     
-                    # Show extracted skills
+                    # Show extracted skills in a better format
                     if parsed.get("required_skills"):
-                        st.subheader("🎯 Extracted Required Skills")
-                        skills_text = ", ".join(parsed["required_skills"][:10])  # Show first 10
-                        if len(parsed["required_skills"]) > 10:
-                            skills_text += f" ... and {len(parsed['required_skills']) - 10} more"
-                        st.write(skills_text)
+                        st.subheader("🎯 Key Skills Identified")
+                        skills = parsed["required_skills"][:15]  # Show first 15 skills
+                        if len(parsed["required_skills"]) > 15:
+                            skills.append(f"... and {len(parsed['required_skills']) - 15} more")
+                        
+                        # Display skills as badges
+                        skill_cols = st.columns(3)
+                        for i, skill in enumerate(skills):
+                            with skill_cols[i % 3]:
+                                st.success(f"✓ {skill.title()}")
+                    
+                    # Show responsibilities if available
+                    if parsed.get("responsibilities"):
+                        st.subheader("📝 Key Responsibilities")
+                        for i, resp in enumerate(parsed["responsibilities"][:5], 1):
+                            st.write(f"{i}. {resp}")
+                    
+                    # Show experience requirements
+                    if parsed.get("experience_requirements", {}).get("level"):
+                        st.subheader("💼 Experience Level")
+                        exp_info = parsed["experience_requirements"]
+                        if exp_info.get("min_years", 0) > 0:
+                            st.write(f"**Level:** {exp_info.get('level', 'Not specified')}")
+                            st.write(f"**Experience:** {exp_info.get('min_years', 0)}+ years")
 
 def show_placement_search_resumes():
     """Show placement officer resume search and filter"""
@@ -468,10 +490,7 @@ def show_student_workflow():
     if 'student_resume_id' in st.session_state:
         st.subheader("🎯 Step 2: Browse Available Jobs")
         
-        # Debug info (can be removed later)
-        with st.expander("🔧 Debug Info", expanded=False):
-            st.write(f"Resume ID: {st.session_state.student_resume_id}")
-            st.write(f"Session state keys: {list(st.session_state.keys())}")
+        # Debug info removed for cleaner UI
         
         # Get job descriptions
         jds_response = make_api_request("/job-descriptions")
@@ -509,8 +528,7 @@ def show_student_workflow():
                                 "job_description_id": jd['id']
                             }
                             
-                            # Debug info
-                            st.write(f"🔧 Debug: Sending resume_id={form_data['resume_id']}, job_description_id={form_data['job_description_id']}")
+                            # Remove debug info for cleaner UI
                             
                             with st.spinner("🤖 Evaluating your application..."):
                                 result = make_api_request("/evaluate", "POST", form_data)
@@ -521,13 +539,29 @@ def show_student_workflow():
                                 # Show application results
                                 st.success("🎉 Application submitted successfully!")
                                 
-                                # Score and verdict
+                                # Create a professional results display
+                                st.subheader("📊 Evaluation Results")
+                                
+                                # Score and verdict in a better layout
                                 col1, col2, col3 = st.columns(3)
                                 with col1:
-                                    st.metric("Relevance Score", f"{analysis['relevance_score']}/100")
+                                    score = analysis['relevance_score']
+                                    if score >= 80:
+                                        st.success(f"**Relevance Score: {score}/100** 🎯")
+                                    elif score >= 60:
+                                        st.warning(f"**Relevance Score: {score}/100** ⚡")
+                                    else:
+                                        st.error(f"**Relevance Score: {score}/100** 📈")
+                                
                                 with col2:
-                                    verdict_color = {"High": "🟢", "Medium": "🟡", "Low": "🔴"}
-                                    st.metric("Verdict", f"{verdict_color.get(analysis['verdict'], '⚪')} {analysis['verdict']}")
+                                    verdict = analysis['verdict']
+                                    if verdict == "High":
+                                        st.success(f"**Verdict: {verdict}** 🟢")
+                                    elif verdict == "Medium":
+                                        st.warning(f"**Verdict: {verdict}** 🟡")
+                                    else:
+                                        st.error(f"**Verdict: {verdict}** 🔴")
+                                
                                 with col3:
                                     st.metric("Match Quality", f"{analysis['score_breakdown']['hard_match_score']:.1f}/10")
                                 
@@ -538,35 +572,43 @@ def show_student_workflow():
                                 col1, col2 = st.columns(2)
                                 with col1:
                                     if missing.get("skills"):
-                                        st.write("**Missing Skills:**")
+                                        st.warning("**Missing Skills:**")
                                         for skill in missing["skills"][:5]:  # Show top 5
-                                            st.write(f"• {skill}")
+                                            st.write(f"🔸 {skill.title()}")
+                                        if len(missing["skills"]) > 5:
+                                            st.write(f"... and {len(missing['skills']) - 5} more skills")
                                     else:
-                                        st.write("✅ **No missing skills identified**")
+                                        st.success("✅ **No missing skills identified**")
                                 
                                 with col2:
                                     if missing.get("certifications"):
-                                        st.write("**Missing Certifications:**")
+                                        st.warning("**Missing Certifications:**")
                                         for cert in missing["certifications"][:3]:  # Show top 3
-                                            st.write(f"• {cert}")
+                                            st.write(f"🔸 {cert.title()}")
+                                        if len(missing["certifications"]) > 3:
+                                            st.write(f"... and {len(missing['certifications']) - 3} more certifications")
                                     else:
-                                        st.write("✅ **No missing certifications identified**")
+                                        st.success("✅ **No missing certifications identified**")
                                 
                                 # Improvement suggestions
                                 st.subheader("💡 Personalized Improvement Suggestions")
                                 suggestions = analysis.get("improvement_suggestions", [])
                                 if suggestions:
-                                    for suggestion in suggestions:
-                                        st.write(f"• {suggestion}")
+                                    for i, suggestion in enumerate(suggestions[:5], 1):  # Show top 5
+                                        st.info(f"**{i}.** {suggestion}")
+                                    if len(suggestions) > 5:
+                                        st.write(f"... and {len(suggestions) - 5} more suggestions")
                                 else:
-                                    st.write("No specific suggestions available.")
+                                    st.info("🎯 **Great job!** No specific improvement suggestions at this time.")
                                 
                                 # Strengths
                                 strengths = analysis.get("strengths", [])
                                 if strengths:
                                     st.subheader("💪 Your Key Strengths")
-                                    for strength in strengths[:3]:  # Show top 3
-                                        st.write(f"• {strength}")
+                                    for i, strength in enumerate(strengths[:3], 1):  # Show top 3
+                                        st.success(f"**{i}.** {strength}")
+                                    if len(strengths) > 3:
+                                        st.write(f"... and {len(strengths) - 3} more strengths")
                                 
                                 # Download results
                                 st.subheader("📥 Download Application Report")

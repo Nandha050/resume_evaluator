@@ -39,28 +39,38 @@ class JobDescriptionParser:
     
     def extract_job_title(self, text: str) -> str:
         """Extract job title from job description"""
-        # Common patterns for job titles
+        # Enhanced patterns for job titles
         title_patterns = [
-            r'(?:position|role|title|job):\s*([^\n]+)',
-            r'(?:we are looking for|seeking|hiring)\s+(?:a|an)?\s*([^\n]+?)(?:\s+to|$|\n)',
-            r'^([A-Z][^.\n]{5,50})(?:\n|$)',
-            r'(?:software|data|web|mobile|devops|cloud|ai|ml)\s+(?:engineer|developer|analyst|scientist|architect|consultant)',
-            r'(?:senior|junior|lead|principal)\s+(?:software|data|web|mobile|devops|cloud|ai|ml)\s+(?:engineer|developer|analyst|scientist|architect|consultant)'
+            r'(?:position|role|title|job|opening):\s*([^\n]+?)(?:\n|$)',
+            r'(?:we are looking for|seeking|hiring|recruiting)\s+(?:a|an)?\s*([^\n]+?)(?:\s+to|$|\n)',
+            r'^([A-Z][^.\n]{5,50}?)(?:\s+position|\s+role|\s+job|\n|$)',
+            r'(?:software|data|web|mobile|devops|cloud|ai|ml|backend|frontend|full.?stack)\s+(?:engineer|developer|analyst|scientist|architect|consultant|specialist)',
+            r'(?:senior|junior|lead|principal|staff|associate)\s+(?:software|data|web|mobile|devops|cloud|ai|ml|backend|frontend|full.?stack)\s+(?:engineer|developer|analyst|scientist|architect|consultant|specialist)',
+            r'(?:data\s+)?(?:engineer|developer|analyst|scientist|architect|consultant|specialist|intern)',
+            r'(?:python|java|javascript|react|angular|vue|node)\s+(?:developer|engineer)',
+            r'(?:machine learning|deep learning|ai|ml)\s+(?:engineer|developer|scientist|specialist)'
         ]
         
         text_lower = text.lower()
         for pattern in title_patterns:
             matches = re.findall(pattern, text, re.IGNORECASE | re.MULTILINE)
             if matches:
-                return matches[0].strip()
+                title = matches[0].strip()
+                # Clean up the title
+                title = re.sub(r'\s+', ' ', title)  # Remove extra spaces
+                if len(title) > 3 and len(title) < 100:  # Reasonable length
+                    return title
         
         # Fallback: look for common job titles in the first few lines
-        lines = text.split('\n')[:5]
+        lines = text.split('\n')[:10]  # Check more lines
         for line in lines:
             line = line.strip()
             if any(keyword in line.lower() for keyword in 
-                  ['engineer', 'developer', 'analyst', 'scientist', 'architect', 'consultant', 'manager']):
-                return line
+                  ['engineer', 'developer', 'analyst', 'scientist', 'architect', 'consultant', 'manager', 'intern']):
+                # Clean up the line
+                line = re.sub(r'\s+', ' ', line)
+                if len(line) > 3 and len(line) < 100:
+                    return line
         
         return "Software Engineer"  # Default fallback
     
@@ -72,31 +82,43 @@ class JobDescriptionParser:
             "industry": ""
         }
         
-        # Company name patterns
+        # Better company name patterns
         company_patterns = [
-            r'(?:at|company|organization):\s*([^\n]+)',
-            r'(?:join|work with)\s+([A-Z][^.\n]+)',
-            r'^([A-Z][^.\n]{2,30})(?:\s+is|\s+seeks|\s+hiring)'
+            r'(?:company|organization|firm|corporation):\s*([^\n]+?)(?:\n|$)',
+            r'(?:at|join|work with|we are)\s+([A-Z][a-zA-Z\s&]{2,50}?)(?:\s+is|\s+seeks|\s+hiring|\s+offers|\n)',
+            r'^([A-Z][a-zA-Z\s&]{2,50}?)(?:\s+is\s+(?:looking|seeking|hiring)|$)',
+            r'(?:about\s+)?([A-Z][a-zA-Z\s&]{2,50}?)(?:\s+is\s+a\s+leading)',
+            r'(?:we\s+at\s+)([A-Z][a-zA-Z\s&]{2,50}?)(?:\s+are)'
         ]
         
         for pattern in company_patterns:
             matches = re.findall(pattern, text, re.IGNORECASE | re.MULTILINE)
             if matches:
-                company_info["name"] = matches[0].strip()
-                break
+                company_name = matches[0].strip()
+                # Filter out common false positives
+                if not any(word in company_name.lower() for word in 
+                          ['data visualization', 'tools like', 'tableau', 'power bi', 'skills', 'experience', 'years']):
+                    company_info["name"] = company_name
+                    break
         
-        # Location patterns
+        # Better location patterns
         location_patterns = [
-            r'(?:location|based in|office in):\s*([^\n]+)',
-            r'(?:hyderabad|bangalore|pune|delhi|mumbai|chennai|kolkata|gurgaon|noida)',
-            r'(?:remote|hybrid|onsite)'
+            r'(?:location|based in|office in|work from):\s*([^\n]+?)(?:\n|$)',
+            r'(?:hyderabad|bangalore|pune|delhi|mumbai|chennai|kolkata|gurgaon|noida|bengaluru)(?:\s*\([^)]+\))?',
+            r'(?:remote|hybrid|onsite|work from home)',
+            r'([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s*\([^)]*onsite[^)]*\)',
+            r'([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s*\([^)]*remote[^)]*\)'
         ]
         
         for pattern in location_patterns:
             matches = re.findall(pattern, text, re.IGNORECASE)
             if matches:
-                company_info["location"] = matches[0].strip()
-                break
+                location = matches[0].strip()
+                # Clean up location text
+                location = re.sub(r'\([^)]*\)', '', location).strip()
+                if location and len(location) < 50:  # Avoid very long location strings
+                    company_info["location"] = location
+                    break
         
         return company_info
     
@@ -149,19 +171,30 @@ class JobDescriptionParser:
         """Extract technical skills from a given text"""
         skills = []
         
-        # Technical skills patterns
+        # Enhanced technical skills patterns
         skill_patterns = [
-            r'\b(python|java|javascript|react|angular|vue|node\.?js|express|django|flask|fastapi)\b',
-            r'\b(sql|mysql|postgresql|mongodb|redis|docker|kubernetes)\b',
-            r'\b(aws|azure|gcp|git|github|gitlab)\b',
-            r'\b(machine learning|deep learning|tensorflow|pytorch|scikit-learn)\b',
-            r'\b(pandas|numpy|matplotlib|seaborn|jupyter)\b',
-            r'\b(html|css|bootstrap|tailwind|sass|less|typescript)\b',
-            r'\b(rest api|graphql|microservices|agile|scrum|devops)\b',
-            r'\b(spring|hibernate|jpa|junit|maven|gradle)\b',
-            r'\b(ios|android|swift|kotlin|flutter|react native)\b',
-            r'\b(linux|unix|bash|shell|powershell)\b',
-            r'\b(jenkins|ci/cd|terraform|ansible|prometheus|grafana)\b'
+            # Programming Languages
+            r'\b(python|java|javascript|typescript|go|rust|c\+\+|c#|php|ruby|swift|kotlin|scala|r)\b',
+            # Web Technologies
+            r'\b(react|angular|vue|node\.?js|express|django|flask|fastapi|spring|laravel|rails)\b',
+            # Databases
+            r'\b(sql|mysql|postgresql|mongodb|redis|elasticsearch|cassandra|dynamodb|oracle)\b',
+            # Cloud & DevOps
+            r'\b(aws|azure|gcp|docker|kubernetes|jenkins|terraform|ansible|git|github|gitlab)\b',
+            # Data Science & ML
+            r'\b(machine learning|deep learning|tensorflow|pytorch|scikit-learn|pandas|numpy|matplotlib|seaborn|jupyter|spark|kafka)\b',
+            # Frontend
+            r'\b(html|css|bootstrap|tailwind|sass|less|webpack|babel)\b',
+            # Backend & APIs
+            r'\b(rest api|graphql|microservices|agile|scrum|devops|ci/cd)\b',
+            # Mobile
+            r'\b(ios|android|flutter|react native|xamarin)\b',
+            # System & Tools
+            r'\b(linux|unix|bash|shell|powershell|vim|emacs)\b',
+            # Monitoring & Analytics
+            r'\b(prometheus|grafana|kibana|splunk|datadog)\b',
+            # Additional skills
+            r'\b(tableau|power bi|excel|airflow|hadoop|hive|pig|sqoop)\b'
         ]
         
         text_lower = text.lower()
@@ -169,7 +202,13 @@ class JobDescriptionParser:
             matches = re.findall(pattern, text_lower, re.IGNORECASE)
             skills.extend(matches)
         
-        return skills
+        # Remove duplicates and clean up
+        unique_skills = list(set(skill.lower() for skill in skills))
+        
+        # Filter out very short or common words
+        filtered_skills = [skill for skill in unique_skills if len(skill) > 2 and skill not in ['api', 'ci', 'cd']]
+        
+        return filtered_skills
     
     def extract_qualifications(self, text: str) -> List[str]:
         """Extract educational qualifications"""

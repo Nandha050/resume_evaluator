@@ -69,7 +69,7 @@ async def health_check():
 @app.post("/upload/job-description")
 async def upload_job_description(
     file: UploadFile = File(...),
-    title: str = Form(...),
+    title: str = Form(""),
     company: str = Form(""),
     location: str = Form(""),
     db: Session = Depends(get_db)
@@ -311,6 +311,37 @@ async def get_results(
     except Exception as e:
         logger.error(f"Error getting results: {e}")
         raise HTTPException(status_code=500, detail=f"Error retrieving results: {str(e)}")
+
+@app.get("/evaluations")
+async def get_evaluations(db: Session = Depends(get_db)):
+    """Get all evaluations"""
+    try:
+        evaluations = db.query(ResumeEvaluation).all()
+        results = []
+        
+        for eval_record in evaluations:
+            result = {
+                "id": eval_record.id,
+                "resume_id": eval_record.resume_id,
+                "job_description_id": eval_record.job_description_id,
+                "relevance_score": eval_record.relevance_score,
+                "verdict": eval_record.verdict,
+                "hard_match_score": eval_record.hard_match_score,
+                "semantic_match_score": eval_record.semantic_match_score,
+                "evaluation_date": eval_record.created_at.isoformat(),
+                "missing_skills": json.loads(eval_record.missing_skills or "[]"),
+                "improvement_suggestions": json.loads(eval_record.improvement_suggestions or "[]")
+            }
+            results.append(result)
+        
+        return {
+            "evaluations": results,
+            "total_count": len(results)
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting evaluations: {e}")
+        raise HTTPException(status_code=500, detail=f"Error retrieving evaluations: {str(e)}")
 
 @app.get("/dashboard/stats")
 async def get_dashboard_stats(db: Session = Depends(get_db)):
