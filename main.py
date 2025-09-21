@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import func
+import uvicorn
 import os
 import json
 import logging
@@ -432,6 +433,6 @@ async def get_job_descriptions(limit: int = 50, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Error retrieving job descriptions: {str(e)}")
 
 if __name__ == "__main__":
-    import uvicorn
+    
     port = int(os.environ.get("PORT", 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
