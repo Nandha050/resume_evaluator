@@ -127,19 +127,19 @@ python -c "from src.models.database import create_tables; create_tables()"
 
 ### Quick Start
 ```bash
-# Start both backend and frontend servers
-python start_server.py
+# Start the application (recommended)
+streamlit run streamlit_app.py
 ```
 
 This will start:
-- **Backend API**: http://localhost:8000
 - **Frontend Dashboard**: http://localhost:8501
+- **Backend API**: Automatically started in background
 - **API Documentation**: http://localhost:8000/docs
 
 ### Manual Start (Alternative)
 ```bash
 # Terminal 1: Start backend
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+python main.py
 
 # Terminal 2: Start frontend
 streamlit run dashboard.py --server.port 8501

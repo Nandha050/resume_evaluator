@@ -1,26 +1,25 @@
 #!/usr/bin/env python3
 """
 Streamlit Cloud deployment entry point for the Resume Evaluation System
-This version integrates backend functionality directly into Streamlit
 """
 
-import os
-import sys
 import subprocess
-import threading
+import sys
+import os
 import time
+import threading
 from pathlib import Path
 
-def check_spacy_model():
-    """Check if spaCy model is available"""
+def install_spacy_model():
+    """Install spaCy model if not present"""
     try:
         import spacy
         spacy.load("en_core_web_sm")
-        print("✅ spaCy model available")
-        return True
+        print("✅ spaCy model already installed")
     except OSError:
-        print("⚠️ spaCy model not found - app will work with limited NLP features")
-        return False
+        print("📥 Installing spaCy model...")
+        subprocess.run([sys.executable, "-m", "spacy", "download", "en_core_web_sm"], check=True)
+        print("✅ spaCy model installed successfully")
 
 def start_backend():
     """Start FastAPI backend in background"""
@@ -42,15 +41,12 @@ def main():
     print("🎯 Resume Evaluation System - Streamlit Cloud Deployment")
     print("=" * 60)
     
-    # Check spaCy model
-    check_spacy_model()
+    # Install spaCy model
+    install_spacy_model()
     
     # Create necessary directories
     os.makedirs("data/uploads", exist_ok=True)
     os.makedirs(".streamlit", exist_ok=True)
-    
-    # Set environment variable to indicate we're running in Streamlit Cloud
-    os.environ["STREAMLIT_CLOUD"] = "true"
     
     # Start backend in background thread
     backend_thread = threading.Thread(target=start_backend, daemon=True)
@@ -60,16 +56,18 @@ def main():
     print("⏳ Waiting for backend to start...")
     time.sleep(5)
     
-    print("🎨 Starting Streamlit dashboard...")
-    
-    # Import and run the main dashboard directly
+    # Import and run the dashboard
     try:
+        import streamlit as st
         from dashboard import main as dashboard_main
+        
+        print("✅ Starting Streamlit dashboard...")
         dashboard_main()
+        
     except Exception as e:
         print(f"❌ Error starting dashboard: {e}")
-        import traceback
-        traceback.print_exc()
+        # Fallback: run dashboard directly
+        subprocess.run([sys.executable, "-m", "streamlit", "run", "dashboard.py"], check=True)
 
 if __name__ == "__main__":
     main()
