@@ -10,16 +10,16 @@ import time
 import threading
 from pathlib import Path
 
-def install_spacy_model():
-    """Install spaCy model if not present"""
+def check_spacy_model():
+    """Check if spaCy model is available"""
     try:
         import spacy
         spacy.load("en_core_web_sm")
-        print("✅ spaCy model already installed")
+        print("✅ spaCy model available")
+        return True
     except OSError:
-        print("📥 Installing spaCy model...")
-        subprocess.run([sys.executable, "-m", "spacy", "download", "en_core_web_sm"], check=True)
-        print("✅ spaCy model installed successfully")
+        print("⚠️ spaCy model not found - app will work with limited NLP features")
+        return False
 
 def start_backend():
     """Start FastAPI backend in background"""
@@ -41,8 +41,8 @@ def main():
     print("🎯 Resume Evaluation System - Streamlit Cloud Deployment")
     print("=" * 60)
     
-    # Install spaCy model
-    install_spacy_model()
+    # Check spaCy model
+    check_spacy_model()
     
     # Create necessary directories
     os.makedirs("data/uploads", exist_ok=True)
