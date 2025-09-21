@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """
 Streamlit Cloud deployment entry point for the Resume Evaluation System
+This version integrates backend functionality directly into Streamlit
 """
 
-import subprocess
-import sys
 import os
-import time
+import sys
+import subprocess
 import threading
+import time
 from pathlib import Path
 
 def check_spacy_model():
@@ -48,6 +49,9 @@ def main():
     os.makedirs("data/uploads", exist_ok=True)
     os.makedirs(".streamlit", exist_ok=True)
     
+    # Set environment variable to indicate we're running in Streamlit Cloud
+    os.environ["STREAMLIT_CLOUD"] = "true"
+    
     # Start backend in background thread
     backend_thread = threading.Thread(target=start_backend, daemon=True)
     backend_thread.start()
@@ -56,18 +60,16 @@ def main():
     print("⏳ Waiting for backend to start...")
     time.sleep(5)
     
-    # Import and run the dashboard
+    print("🎨 Starting Streamlit dashboard...")
+    
+    # Import and run the main dashboard directly
     try:
-        import streamlit as st
         from dashboard import main as dashboard_main
-        
-        print("✅ Starting Streamlit dashboard...")
         dashboard_main()
-        
     except Exception as e:
         print(f"❌ Error starting dashboard: {e}")
-        # Fallback: run dashboard directly
-        subprocess.run([sys.executable, "-m", "streamlit", "run", "dashboard.py"], check=True)
+        import traceback
+        traceback.print_exc()
 
 if __name__ == "__main__":
     main()

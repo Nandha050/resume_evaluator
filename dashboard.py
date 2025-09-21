@@ -19,6 +19,9 @@ st.set_page_config(
 import os
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
 
+# Check if running in Streamlit Cloud
+IS_STREAMLIT_CLOUD = os.getenv("STREAMLIT_CLOUD", "false").lower() == "true"
+
 # Custom CSS
 st.markdown("""
 <style>
@@ -53,13 +56,13 @@ def make_api_request(endpoint, method="GET", data=None, files=None):
         url = f"{API_BASE_URL}{endpoint}"
         
         if method == "GET":
-            response = requests.get(url)
+            response = requests.get(url, timeout=10)
         elif method == "POST":
             if files:
-                response = requests.post(url, data=data, files=files)
+                response = requests.post(url, data=data, files=files, timeout=30)
             else:
                 # For form data (like evaluation endpoint), use data parameter
-                response = requests.post(url, data=data)
+                response = requests.post(url, data=data, timeout=30)
         
         if response.status_code == 200:
             return response.json()
@@ -67,13 +70,35 @@ def make_api_request(endpoint, method="GET", data=None, files=None):
             st.error(f"API Error: {response.status_code} - {response.text}")
             return None
     except requests.exceptions.ConnectionError:
-        st.error("Could not connect to API. Please ensure the backend server is running.")
+        if IS_STREAMLIT_CLOUD:
+            st.warning("⏳ Backend is starting up... Please wait a moment and refresh the page.")
+        else:
+            st.error("Could not connect to API. Please ensure the backend server is running.")
+        return None
+    except requests.exceptions.Timeout:
+        st.warning("⏳ Request timed out. The backend might be busy. Please try again.")
         return None
     except Exception as e:
         st.error(f"Error making API request: {str(e)}")
         return None
 
+def check_backend_health():
+    """Check if backend is running and healthy"""
+    try:
+        response = requests.get(f"{API_BASE_URL}/health", timeout=5)
+        return response.status_code == 200
+    except:
+        return False
+
 def main():
+    # Check backend health if running in Streamlit Cloud
+    if IS_STREAMLIT_CLOUD:
+        if not check_backend_health():
+            st.warning("⏳ Backend is starting up... Please wait a moment.")
+            if st.button("🔄 Refresh"):
+                st.rerun()
+            return
+    
     # Check if user has selected a role
     if 'user_role' not in st.session_state:
         show_landing_page()
