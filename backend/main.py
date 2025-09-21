@@ -10,6 +10,10 @@ import logging
 from typing import List, Optional
 import uuid
 from datetime import datetime
+import sys
+
+# Add project root to sys.path to fix src import issue
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import our modules
 from src.models.database import get_db, create_tables, JobDescription, Resume, ResumeEvaluation
@@ -52,6 +56,9 @@ create_tables()
 # Ensure upload directory exists
 UPLOAD_DIR = os.getenv("UPLOAD_DIR", "./data/uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+# ... (rest of your routes remain unchanged)
+
 
 @app.get("/")
 async def root():
